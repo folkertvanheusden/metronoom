@@ -13,10 +13,10 @@ rtpmidid::rtpserver *am = nullptr;
 
 rtpmidid::mdns_rtpmidi mdns_rtpmidi;
 
-void send(rtpmidid::rtpserver *const am)
+void send(rtpmidid::rtpserver *const am, const uint8_t instrument)
 {
-	uint8_t msg[] { 0x99, 0x34, 127 };
-	rtpmidid::io_bytes b(msg, 5);
+	uint8_t msg[] { 0x99, instrument, 127 };
+	rtpmidid::io_bytes b(msg, sizeof msg);
 
 	am->send_midi_to_all_peers(rtpmidid::io_bytes_reader(b));
 }
@@ -43,6 +43,7 @@ void usage()
 {
 	printf("-p x   port to listen on (hopefully no need to configure this)\n");
 	printf("-b x   BPM to beat on\n");
+	printf("-i x   (percussion) instrument to use (1-based numbering!)\n");
 	printf("-V     show version\n");
 	printf("-h     this help\n");
 }
@@ -51,13 +52,16 @@ int main(int argc, char *argv[])
 {
 	std::string port = "15115", name = "metronoom";
 	double BPM = 116;
+	int instrument = 0x34;
 
 	int c = -1;
-	while((c = getopt(argc, argv, "p:b:Vh")) != -1) {
+	while((c = getopt(argc, argv, "p:b:i:Vh")) != -1) {
 		if (c == 'p')
 			port = optarg;
 		else if (c == 'b')
 			BPM = atof(optarg);
+		else if (c == 'i')
+			instrument = atoi(optarg) - 1;
 		else if (c == 'V') {
 			printf("metronoom (C) 2021 by Folkert van Heusden\n");
 			return 0;
@@ -92,7 +96,7 @@ int main(int argc, char *argv[])
 		if (slp)
 			usleep(slp);
 
-		send(am);
+		send(am, instrument);
 
 		int64_t now_after = get_us();
 		int64_t delta = now_after - prev;
