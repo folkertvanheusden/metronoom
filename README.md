@@ -7,15 +7,15 @@ building
 --------
 Install rtpmidid (especially its 'dev' library), then:
 
- make build
- cd build
- cmake ..
- make
+* make build
+* cd build
+* cmake ..
+* make
 
 
 usage
 -----
- metronoom -h
+* metronoom -h
 
 to see a list of options.
 
