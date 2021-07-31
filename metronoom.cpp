@@ -1,3 +1,4 @@
+#include <atomic>
 #include <stdio.h>
 #include <string_view>
 #include <thread>
@@ -84,6 +85,22 @@ int main(int argc, char *argv[])
 		INFO("Remote client connects to local server at port {}. Name: {}", atoi(port.c_str()), peer->remote_name);
 	});
 
+	std::atomic_bool playing { true };
+
+	am->midi_event.connect([&playing](rtpmidid::io_bytes_reader buffer) {
+			size_t len = buffer.size();
+
+			if (len) {
+				uint8_t msg = buffer.read_uint8();
+
+				if (msg == 0xfa)
+					playing = true;
+
+				else if (msg == 0xfc)
+					playing = false;
+			}
+		});
+
 	std::thread poller(poller_thread);
 
 	int64_t prev = get_us();
@@ -96,7 +113,8 @@ int main(int argc, char *argv[])
 		if (slp)
 			usleep(slp);
 
-		send(am, instrument);
+		if (playing)
+			send(am, instrument);
 
 		int64_t now_after = get_us();
 		int64_t delta = now_after - prev;
