@@ -139,9 +139,11 @@ int main(int argc, char *argv[])
 		time_t t = now_rt / 1000000;
 		struct tm *tm = localtime(&t);
 
-		printf("%lu (%04d:%02d:%02d %02d:%02d:%02d.%06lu) %ld (%ld | %8.4f%%) BEAT\n",
+		int64_t delta_err = delta - interval;
+
+		printf("%lu (%04d:%02d:%02d %02d:%02d:%02d.%06lu) %ldus (%ldus | %5ldus | %8.4f%%) BEAT\n",
 				now_rt, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now_rt % 1000000,
-				delta, interval, (delta - interval) * 100.0 / interval);
+				delta, interval, delta_err, delta_err * 100.0 / interval);
 	}
 
 	return 0;
