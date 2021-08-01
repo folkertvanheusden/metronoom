@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string_view>
 #include <thread>
+#include <time.h>
 #include <unistd.h>
 #include <rtpmidid/iobytes.hpp>
 #include <rtpmidid/poller.hpp>
@@ -27,6 +28,18 @@ uint64_t get_us()
         struct timespec tp { 0 };
 
         if (clock_gettime(CLOCK_MONOTONIC, &tp) == -1) {
+                perror("clock_gettime");
+                return 0;
+        }
+
+        return tp.tv_sec * 1000l * 1000l + tp.tv_nsec / 1000;
+}
+
+uint64_t get_us_rt()
+{
+        struct timespec tp { 0 };
+
+        if (clock_gettime(CLOCK_REALTIME, &tp) == -1) {
                 perror("clock_gettime");
                 return 0;
         }
@@ -117,9 +130,18 @@ int main(int argc, char *argv[])
 			send(am, instrument);
 
 		int64_t now_after = get_us();
+
 		int64_t delta = now_after - prev;
-		printf("%ld (%ld | %8.4f%%) BEAT\n", delta, interval, double(delta - interval) / interval);
+
 		prev = now_after;
+
+		uint64_t now_rt = get_us_rt();
+		time_t t = now_rt / 1000000;
+		struct tm *tm = localtime(&t);
+
+		printf("%lu (%04d:%02d:%02d %02d:%02d:%02d.%06lu) %ld (%ld | %8.4f%%) BEAT\n",
+				now_rt, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now_rt % 1000000,
+				delta, interval, (delta - interval) * 100.0 / interval);
 	}
 
 	return 0;
