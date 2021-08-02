@@ -122,9 +122,10 @@ int main(int argc, char *argv[])
 	for(;;) {
 		int64_t now = get_us();
 		int64_t slp = interval - (now % interval);
+		int64_t then = now + slp;
 
-		if (slp)
-			usleep(slp);
+		struct timespec ts = { then / 1000000, (then % 1000000) * 1000l };
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
 
 		if (playing)
 			send(am, instrument);
