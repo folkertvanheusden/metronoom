@@ -63,7 +63,7 @@ void usage()
 
 int main(int argc, char *argv[])
 {
-	std::string port = "15115", name = "metronoom";
+	std::string port = "15115", name = "metronoom_";
 	double BPM = 116;
 	int instrument = 0x34;
 
@@ -88,6 +88,10 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
+
+	char hostname[128];
+	gethostname(hostname, sizeof hostname);
+	name += hostname;
 
 	am = new rtpmidid::rtpserver(name, port);
 
