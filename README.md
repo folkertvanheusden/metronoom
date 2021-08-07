@@ -1,8 +1,3 @@
-copyrights
-----------
-mdns_rtpmidi.hpp and mdns_rtpmidi.cpp are from https://github.com/davidmoreno/rtpmidid
-
-
 building
 --------
 Install rtpmidid (especially its 'dev' library) from:

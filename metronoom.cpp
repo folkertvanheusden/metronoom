@@ -5,10 +5,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <rtpmidid/iobytes.hpp>
+#include <rtpmidid/mdns_rtpmidi.hpp>
 #include <rtpmidid/poller.hpp>
 #include <rtpmidid/rtpserver.hpp>
-
-#include "mdns_rtpmidi.hpp"
 
 
 rtpmidid::rtpserver *am = nullptr;
