@@ -8,7 +8,6 @@ set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-point
 add_executable(
   metronoom
   metronoom.cpp
-  mdns_rtpmidi.cpp
 )
 
 #target_link_libraries(metronoom fmt rtpmididstatic)
@@ -26,10 +25,8 @@ target_link_libraries(metronoom ${AVAHI_LIBRARIES})
 target_include_directories(metronoom PUBLIC ${AVAHI_INCLUDE_DIRS})
 target_compile_options(metronoom PUBLIC ${AVAHI_CFLAGS_OTHER})
 
-pkg_check_modules(FMT REQUIRED fmt)
-target_link_libraries(metronoom ${FMT_LIBRARIES})
-target_include_directories(metronoom PUBLIC ${FMT_INCLUDE_DIRS})
-target_compile_options(metronoom PUBLIC ${FMT_CFLAGS_OTHER})
+find_package(fmt REQUIRED CONFIG)
+target_link_libraries(metronoom fmt::fmt)
 
 set_target_properties(metronoom PROPERTIES OUTPUT_NAME metronoom)
 
