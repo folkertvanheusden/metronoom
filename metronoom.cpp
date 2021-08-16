@@ -1,5 +1,6 @@
 #include <atomic>
 #include <stdio.h>
+#include <signal.h>
 #include <string_view>
 #include <thread>
 #include <time.h>
@@ -8,10 +9,19 @@
 #include <rtpmidid/mdns_rtpmidi.hpp>
 #include <rtpmidid/poller.hpp>
 #include <rtpmidid/rtpserver.hpp>
+#include <sys/resource.h>
+#include <sys/time.h>
 
+
+#define BILLION 1000000000ll
+
+int instrument = 0x34;
+std::atomic_bool playing { true };
+
+uint64_t start = 0;
+uint64_t i = 0;
 
 rtpmidid::rtpserver *am = nullptr;
-
 rtpmidid::mdns_rtpmidi mdns_rtpmidi;
 
 void send(rtpmidid::rtpserver *const am, const uint8_t instrument)
@@ -52,6 +62,19 @@ void poller_thread()
 		rtpmidid::poller.wait();
 }
 
+void timer_handler(sigval sv)
+{
+	if (playing)
+		send(am, instrument);
+
+	static int cnt = 0;
+	cnt++;
+
+	uint64_t now = get_us_rt();
+
+	printf("%.3f ping %d/%.6f\n", now / 1000.0, cnt, (now - start) / (i / 1000.0));
+}
+
 void usage()
 {
 	printf("-p x   port to listen on (hopefully no need to configure this)\n");
@@ -65,7 +88,6 @@ int main(int argc, char *argv[])
 {
 	std::string port = "15115", name = "metronoom_";
 	double BPM = 116;
-	int instrument = 0x34;
 
 	int c = -1;
 	while((c = getopt(argc, argv, "p:b:i:Vh")) != -1) {
@@ -89,6 +111,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (setpriority(PRIO_PROCESS, getpid(), -20) == -1)
+		perror("setpriority");
+
 	char hostname[128];
 	gethostname(hostname, sizeof hostname);
 	name += hostname;
@@ -101,9 +126,7 @@ int main(int argc, char *argv[])
 		INFO("Remote client connects to local server at port {}. Name: {}", atoi(port.c_str()), peer->remote_name);
 	});
 
-	std::atomic_bool playing { true };
-
-	am->midi_event.connect([&playing](rtpmidid::io_bytes_reader buffer) {
+	am->midi_event.connect([](rtpmidid::io_bytes_reader buffer) {
 			size_t len = buffer.size();
 
 			if (len) {
@@ -119,36 +142,28 @@ int main(int argc, char *argv[])
 
 	std::thread poller(poller_thread);
 
-	int64_t prev = get_us();
-	const int64_t interval = 60000000 / BPM;
+	struct sigevent sevp { 0 };
+	sevp.sigev_notify = SIGEV_THREAD;
+	sevp.sigev_notify_attributes = nullptr;
+	sevp.sigev_value.sival_ptr = nullptr;
+	sevp.sigev_notify_function = timer_handler;
 
-	for(;;) {
-		int64_t now = get_us();
-		int64_t slp = interval - (now % interval);
-		int64_t then = now + slp;
+	timer_t timerid { 0 };
+	if (timer_create(CLOCK_MONOTONIC, &sevp, &timerid) == -1)
+		perror("timer_create");
 
-		struct timespec ts = { then / 1000000, (then % 1000000) * 1000l };
-		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+	i = BILLION * 60 / BPM;
 
-		if (playing)
-			send(am, instrument);
+	struct itimerspec its { 0 };
+	its.it_value.tv_sec = its.it_interval.tv_sec = i / BILLION;
+	its.it_value.tv_nsec = its.it_interval.tv_nsec = i % BILLION;
+	if (timer_settime(timerid, 0, &its, nullptr) == -1)
+		perror("timer_settime");
 
-		int64_t now_after = get_us();
+	start = get_us_rt();
 
-		int64_t delta = now_after - prev;
-
-		prev = now_after;
-
-		uint64_t now_rt = get_us_rt();
-		time_t t = now_rt / 1000000;
-		struct tm *tm = localtime(&t);
-
-		int64_t delta_err = delta - interval;
-
-		printf("%lu (%04d:%02d:%02d %02d:%02d:%02d.%06lu) %ldus (%ldus | %5ldus | %8.4f%%) BEAT\n",
-				now_rt, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now_rt % 1000000,
-				delta, interval, delta_err, delta_err * 100.0 / interval);
-	}
+	for(;;)
+		sleep(86400);
 
 	return 0;
 }
