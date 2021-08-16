@@ -72,7 +72,14 @@ void timer_handler(sigval sv)
 
 	uint64_t now = get_us_rt();
 
-	printf("%.3f ping %d/%.6f\n", now / 1000.0, cnt, (now - start) / (i / 1000.0));
+	double real_cnt = (now - start) / (i / 1000.0);
+	printf("%.3f ping %d/%.6f\n", now / 1000.0, cnt, real_cnt);
+
+	FILE *fh = fopen("log.dat", "a+");
+	if (fh) {
+		fprintf(fh, "%.6f\n", real_cnt - cnt);
+		fclose(fh);
+	}
 }
 
 void usage()
